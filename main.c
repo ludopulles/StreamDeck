@@ -126,6 +126,7 @@ int main()
 	printf("%s\n", buf);
 
 	// Close all the stuff
+	libusb_free_config_descriptor(cdesc);
 	libusb_close(handle);
 	return 0;
 }
