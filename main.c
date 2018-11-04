@@ -1,6 +1,10 @@
-#include<libusb-1.0/libusb.h>
 #include<assert.h>
+#include<dirent.h>
+#include<libusb-1.0/libusb.h>
 #include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<sys/stat.h>
 
 char buf[1024];
 
@@ -9,6 +13,42 @@ void print_info(libusb_device_handle *handle, char *format, int index)
 	int len = libusb_get_string_descriptor_ascii(handle, index, buf, 1024);
 	buf[len] = '\0';
 	printf(format, buf);
+}
+
+int time_before(struct timespec *a, struct timespec *b)
+{
+	if (a->tv_sec != b->tv_sec)
+		return a->tv_sec < b->tv_sec;
+	return a->tv_nsec < b->tv_nsec;
+}
+
+char* last_modified_kattis()
+{
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir("/home/ludop/code/kattis/")) == NULL) {
+		// could not open directory
+		return NULL;
+	}
+
+	// print all the files and directories within directory
+	char fullname[256 + 64] = "/home/ludop/code/kattis/";
+	struct stat fstat;
+
+	char *last_edited = (char*) malloc(256 + 64);
+	struct timespec last_ctime = { 0, 0 };
+	while ((ent = readdir(dir)) != NULL) {
+		if (ent->d_type != DT_REG || !strcmp("a.out", ent->d_name)) continue;
+		strcpy(fullname + 24, ent->d_name);
+		stat(fullname, &fstat);
+
+		if (time_before(&last_ctime, &fstat.st_ctim)) {
+			last_ctime = fstat.st_ctim;
+			strcpy(last_edited, fullname);
+		}
+	}
+	closedir (dir);
+	return last_edited;
 }
 
 int main()
@@ -55,8 +95,6 @@ int main()
 	int err = libusb_open(found, &handle);
 	if (err) {
 		printf("Error code while opening (%d): %s\n", err, libusb_strerror(err));
-		// Close all the stuff
-		libusb_close(handle);
 		return 1;
 	}
 
@@ -118,7 +156,9 @@ int main()
 	}
 
 	int written;
-	unsigned int timeout = 0; // 1000 ms
+	unsigned int timeout = 0;
+
+	int last_state = 0;
 
 	while (1) {
 		retcode = libusb_interrupt_transfer(handle, from_stream->bEndpointAddress, buf, 1024, &written, timeout);
@@ -127,11 +167,40 @@ int main()
 			break;
 		}
 
-		printf("%d bytes received:\n", written);
-		for (int i = 0; i < written; i++) {
-			printf("%d", buf[i] != 0);
+		int cur_state = 0;
+		for (int i = 1; i <= 15; i++) {
+			if (buf[i] != 0)
+				cur_state |= 1 << i;
 		}
-		printf("\n");
+
+		int npressed = 0;
+		if (last_state != cur_state) {
+			for (int i = 1, j = 2; i <= 15; i++, j <<= 1) {
+				if (cur_state & ~last_state & j) {
+					printf("Button %d is pressed.\n", i);
+					npressed++;
+				} else if (~cur_state & last_state & j) {
+					printf("Button %d is released.\n", i);
+				}
+			}
+		}
+
+		if (npressed > 0) {
+			char *ans = last_modified_kattis();
+			if (ans != NULL) {
+				int anslen = strlen(ans);
+				printf("The winner is: %s (%d)\n", ans, anslen);
+				char *cmd = (char*) malloc(anslen + 7);
+				strcpy(cmd, "hattis ");
+				strcpy(cmd + 7, ans);
+				free(ans);
+				printf("Command: %s\n", cmd);
+
+				free(cmd);
+			}
+		}
+
+		last_state = cur_state;
 	}
 
 	// Close all the stuff
