@@ -57,13 +57,16 @@ void button_pressed(int b)
 	if (ans != NULL) {
 		int anslen = strlen(ans);
 		// printf("The winner is: %s (%d)\n", ans, anslen);
-		char *cmd = (char*) malloc(anslen + 7);
-		strcpy(cmd, "hattis ");
-		strcpy(cmd + 7, ans);
+		char *cmd = (char*) malloc(anslen + 22);
+		strcpy(cmd, "su ludop -c \"hattis ");
+		strcpy(cmd + 20, ans);
 		free(ans);
+		cmd[anslen + 20] = '\"';
+		cmd[anslen + 21] = '\0';
 		printf("Command: %s\n", cmd);
 
 		int retcode = system(cmd);
+		// int retcode = 15;
 		printf("Retcode: %d\n", retcode);
 
 		free(cmd);
