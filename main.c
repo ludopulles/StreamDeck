@@ -51,6 +51,30 @@ char* last_modified_kattis()
 	return last_edited;
 }
 
+void button_pressed(int b)
+{
+	char *ans = last_modified_kattis();
+	if (ans != NULL) {
+		int anslen = strlen(ans);
+		// printf("The winner is: %s (%d)\n", ans, anslen);
+		char *cmd = (char*) malloc(anslen + 7);
+		strcpy(cmd, "hattis ");
+		strcpy(cmd + 7, ans);
+		free(ans);
+		printf("Command: %s\n", cmd);
+
+		int retcode = system(cmd);
+		printf("Retcode: %d\n", retcode);
+
+		free(cmd);
+	}
+}
+
+void button_released(int b)
+{
+
+}
+
 int main()
 {
     libusb_context *context = NULL;
@@ -179,6 +203,10 @@ int main()
 		int released = ~cur_state & last_state;
 
 		if (pressed) {
+			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
+				if (cur_state & ~last_state & j)
+					button_pressed(i);
+
 			printf("Buttons pressed: ");
 			int first = 1;
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
@@ -189,21 +217,13 @@ int main()
 				}
 			printf("\n");
 
-			char *ans = last_modified_kattis();
-			if (ans != NULL) {
-				int anslen = strlen(ans);
-				// printf("The winner is: %s (%d)\n", ans, anslen);
-				char *cmd = (char*) malloc(anslen + 7);
-				strcpy(cmd, "hattis ");
-				strcpy(cmd + 7, ans);
-				free(ans);
-				printf("Command: %s\n", cmd);
-
-				free(cmd);
-			}
 		}
 
 		if (released) {
+			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
+				if (~cur_state & last_state & j)
+					button_released(i);
+
 			printf("Buttons released: ");
 			int first = 1;
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
