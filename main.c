@@ -97,10 +97,12 @@ int main()
 		printf("Error code while opening (%d): %s\n", err, libusb_strerror(err));
 		return 1;
 	}
-
+/*
 	print_info(handle, "Manufacturer:  %s\n", desc.iManufacturer);
 	print_info(handle, "Product:       %s\n", desc.iProduct);
 	print_info(handle, "Serial number: %s\n", desc.iSerialNumber);
+*/
+	print_info(handle, "Connected to Elgato Stream Deck %s...\n", desc.iSerialNumber);
 
 	struct libusb_config_descriptor *cdesc;
 	retcode = libusb_get_active_config_descriptor(found, &cdesc);
@@ -125,7 +127,7 @@ int main()
 	const struct libusb_endpoint_descriptor *edesc, *to_stream = NULL, *from_stream = NULL;
 	for (int k = 0; k < idesc->bNumEndpoints; k++) {
 		edesc = &idesc->endpoint[k];
-
+/*
 		printf("endpoint descriptor #%d: ", k);
 		printf("\n\tsize of endpoint descriptor : %d",edesc->bLength);
 		printf("\n\ttype of descriptor : %d",edesc->bDescriptorType);
@@ -133,7 +135,7 @@ int main()
 		printf("\n\tmaximum packet size: %x",edesc->wMaxPacketSize);
 		printf("\n\tattributes applied to endpoint: %d",edesc->bmAttributes);
 		printf("\n\tinterval for polling for data tranfer : %d\n",edesc->bInterval);
-
+*/
 		if (edesc->bEndpointAddress & LIBUSB_ENDPOINT_IN) from_stream = edesc;
 		else to_stream = edesc;
 	}
@@ -173,23 +175,24 @@ int main()
 				cur_state |= 1 << i;
 		}
 
-		int npressed = 0;
-		if (last_state != cur_state) {
-			for (int i = 1, j = 2; i <= 15; i++, j <<= 1) {
-				if (cur_state & ~last_state & j) {
-					printf("Button %d is pressed.\n", i);
-					npressed++;
-				} else if (~cur_state & last_state & j) {
-					printf("Button %d is released.\n", i);
-				}
-			}
-		}
+		int pressed = cur_state & ~last_state;
+		int released = ~cur_state & last_state;
 
-		if (npressed > 0) {
+		if (pressed) {
+			printf("Buttons pressed: ");
+			int first = 1;
+			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
+				if (cur_state & ~last_state & j) {
+					if (first) first = 0;
+					else printf(", ");
+					printf("%d", i);
+				}
+			printf("\n");
+
 			char *ans = last_modified_kattis();
 			if (ans != NULL) {
 				int anslen = strlen(ans);
-				printf("The winner is: %s (%d)\n", ans, anslen);
+				// printf("The winner is: %s (%d)\n", ans, anslen);
 				char *cmd = (char*) malloc(anslen + 7);
 				strcpy(cmd, "hattis ");
 				strcpy(cmd + 7, ans);
@@ -198,6 +201,18 @@ int main()
 
 				free(cmd);
 			}
+		}
+
+		if (released) {
+			printf("Buttons released: ");
+			int first = 1;
+			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
+				if (~cur_state & last_state & j) {
+					if (first) first = 0;
+					else printf(", ");
+					printf("%d", i);
+				}
+			printf("\n");
 		}
 
 		last_state = cur_state;
