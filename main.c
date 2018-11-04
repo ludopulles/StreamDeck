@@ -72,34 +72,32 @@ int main()
 		return 1;
 	}
 
-	const struct libusb_endpoint_descriptor *to_stream = NULL, *from_stream = NULL;
+	if (cdesc->bNumInterfaces != 1) {
+		printf("Unexpected number of interfaces: %d\n", cdesc->bNumInterfaces);
+		return 1;
+	}
+	const struct libusb_interface *usbif = &cdesc->interface[0];
 
-	const struct libusb_interface *usbif;
-	const struct libusb_interface_descriptor *idesc;
-	const struct libusb_endpoint_descriptor *edesc;
+	if (usbif->num_altsetting != 1) {
+		printf("Unexpected number of altsettings: %d\n", usbif->num_altsetting);
+		return 1;
+	}
+	const struct libusb_interface_descriptor *idesc = &usbif->altsetting[0];
 
-	for (int i = 0; i < cdesc->bNumInterfaces; i++) {
-		usbif = &cdesc->interface[i];
-		int nalts = usbif->num_altsetting;
-		for (int j = 0; j < nalts; j++) {
-			idesc = &usbif->altsetting[j];
-			for (int k = 0; k < idesc->bNumEndpoints; k++) {
-				edesc = &idesc->endpoint[k];
+	const struct libusb_endpoint_descriptor *edesc, *to_stream = NULL, *from_stream = NULL;
+	for (int k = 0; k < idesc->bNumEndpoints; k++) {
+		edesc = &idesc->endpoint[k];
 
-				printf("endpoint descriptor(%d,%d,%d): ", i, j, k);
-				printf("\n\tsize of endpoint descriptor : %d",edesc->bLength);
-				printf("\n\ttype of descriptor : %d",edesc->bDescriptorType);
-				printf("\n\tendpoint address : 0x0%x",edesc->bEndpointAddress);
-				printf("\n\tmaximum packet size: %x",edesc->wMaxPacketSize);
-				printf("\n\tattributes applied to endpoint: %d",edesc->bmAttributes);
-				printf("\n\tinterval for polling for data tranfer : %d\n",edesc->bInterval);
+		printf("endpoint descriptor #%d: ", k);
+		printf("\n\tsize of endpoint descriptor : %d",edesc->bLength);
+		printf("\n\ttype of descriptor : %d",edesc->bDescriptorType);
+		printf("\n\tendpoint address : 0x0%x",edesc->bEndpointAddress);
+		printf("\n\tmaximum packet size: %x",edesc->wMaxPacketSize);
+		printf("\n\tattributes applied to endpoint: %d",edesc->bmAttributes);
+		printf("\n\tinterval for polling for data tranfer : %d\n",edesc->bInterval);
 
-				if (edesc->bEndpointAddress & LIBUSB_ENDPOINT_IN)
-					from_stream = edesc;
-				else
-					to_stream = edesc;
-			}
-		}
+		if (edesc->bEndpointAddress & LIBUSB_ENDPOINT_IN) from_stream = edesc;
+		else to_stream = edesc;
 	}
 
 	if (to_stream == NULL || from_stream == NULL) {
@@ -108,24 +106,36 @@ int main()
 		return 1;
 	}
 
-	// printf("Extra info 1: \"%s\", 2: \"%s\"\n", to_stream->extra, from_stream->extra);
-	// printf("attrs: %#04x, %#04x\n", to_stream->bmAttributes, from_stream->bmAttributes);
-
-	int written = 0;
-	unsigned int timeout = 1000; // 1000 ms
-	retcode = libusb_interrupt_transfer(handle, from_stream->bEndpointAddress, buf, 1024, &written, timeout);
-
+	retcode = libusb_set_auto_detach_kernel_driver(handle, 1);
 	if (retcode) {
-		printf("libusb_interrupt_transfer returned %d: %s\n", retcode, libusb_strerror(retcode));
-		// libusb_close(handle);
-		// return 1;
+		printf("libusb_set_auto_detach_kernel_driver (%d): %s\n", retcode, libusb_strerror(retcode));
+		return 1;
+	}
+	retcode = libusb_claim_interface(handle, 0);
+	if (retcode) {
+		printf("Could not claim interface 0 (%d): %s\n", retcode, libusb_strerror(retcode));
+		return 1;
 	}
 
-	printf("%d bytes received:\n", written);
-	buf[written] = '\0';
-	printf("%s\n", buf);
+	int written;
+	unsigned int timeout = 0; // 1000 ms
+
+	while (1) {
+		retcode = libusb_interrupt_transfer(handle, from_stream->bEndpointAddress, buf, 1024, &written, timeout);
+		if (retcode) {
+			printf("libusb_interrupt_transfer returned %d: %s\n", retcode, libusb_strerror(retcode));
+			break;
+		}
+
+		printf("%d bytes received:\n", written);
+		for (int i = 0; i < written; i++) {
+			printf("%d", buf[i] != 0);
+		}
+		printf("\n");
+	}
 
 	// Close all the stuff
+	libusb_release_interface(handle, 0);
 	libusb_free_config_descriptor(cdesc);
 	libusb_close(handle);
 	return 0;
