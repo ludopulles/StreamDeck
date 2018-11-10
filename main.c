@@ -150,13 +150,13 @@ int main()
 
 		if (pressed) {
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
-				if (cur_state & ~last_state & j)
+				if (pressed & j)
 					button_pressed(i);
 
 			printf("Buttons pressed: ");
 			int first = 1;
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
-				if (cur_state & ~last_state & j) {
+				if (pressed & j) {
 					if (first) first = 0;
 					else printf(", ");
 					printf("%d", i);
@@ -167,13 +167,13 @@ int main()
 
 		if (released) {
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
-				if (~cur_state & last_state & j)
+				if (released & j)
 					button_released(i);
 
 			printf("Buttons released: ");
 			int first = 1;
 			for (int i = 1, j = 2; i <= 15; i++, j <<= 1)
-				if (~cur_state & last_state & j) {
+				if (released & j) {
 					if (first) first = 0;
 					else printf(", ");
 					printf("%d", i);
