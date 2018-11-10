@@ -1,5 +1,9 @@
+#include<assert.h>
+#include<dirent.h>
 #include<libusb-1.0/libusb.h>
 #include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
 #include<sys/stat.h>
 
 char buf[1024];
@@ -11,14 +15,89 @@ void print_info(libusb_device_handle *handle, char *format, int index)
 	printf(format, buf);
 }
 
+int time_before(struct timespec *a, struct timespec *b)
+{
+	if (a->tv_sec != b->tv_sec)
+		return a->tv_sec < b->tv_sec;
+	return a->tv_nsec < b->tv_nsec;
+}
+
+char* last_modified_kattis()
+{
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir("/home/ludop/code/kattis/")) == NULL) {
+		// could not open directory
+		return NULL;
+	}
+
+	// print all the files and directories within directory
+	char fullname[256 + 64] = "/home/ludop/code/kattis/";
+	struct stat fstat;
+
+	char *last_edited = (char*) malloc(256 + 64);
+	struct timespec last_ctime = { 0, 0 };
+	while ((ent = readdir(dir)) != NULL) {
+		if (ent->d_type != DT_REG || !strcmp("a.out", ent->d_name)) continue;
+		strcpy(fullname + 24, ent->d_name);
+		stat(fullname, &fstat);
+
+		if (time_before(&last_ctime, &fstat.st_ctim)) {
+			last_ctime = fstat.st_ctim;
+			strcpy(last_edited, fullname);
+		}
+	}
+	closedir (dir);
+	return last_edited;
+}
+
+void compile_kactl()
+{
+	int retcode = system("su ludop -c \"cd ~/repos/kactl; make fast\"");
+	printf("Retcode: %d\n", retcode);
+}
+
+void submit_kattis()
+{
+	char *ans = last_modified_kattis();
+	if (ans != NULL) {
+		int anslen = strlen(ans);
+		// printf("The winner is: %s (%d)\n", ans, anslen);
+		char *cmd = (char*) malloc(anslen + 22);
+		strcpy(cmd, "su ludop -c \"hattis ");
+		strcpy(cmd + 20, ans);
+		free(ans);
+		cmd[anslen + 20] = '\"';
+		cmd[anslen + 21] = '\0';
+		printf("Command: %s\n", cmd);
+
+		int retcode = system(cmd);
+		// int retcode = 15;
+		printf("Retcode: %d\n", retcode);
+
+		free(cmd);
+	}
+}
+
+void start_terminal()
+{
+	assert(system("su ludop -c \"gnome-terminal &\"") == 0);
+}
+
 void button_pressed(int b)
 {
-	// TODO: your code here.
+	if (11 <= b && b <= 15) {
+		compile_kactl();
+	} else if (b == 8) {
+		start_terminal();
+	} else {
+		submit_kattis();
+	}
 }
 
 void button_released(int b)
 {
-	// TODO: your code here.
+
 }
 
 int main()
