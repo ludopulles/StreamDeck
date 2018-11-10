@@ -51,7 +51,13 @@ char* last_modified_kattis()
 	return last_edited;
 }
 
-void button_pressed(int b)
+void compile_kactl()
+{
+	int retcode = system("su ludop -c \"cd ~/repos/kactl; make fast\"");
+	printf("Retcode: %d\n", retcode);
+}
+
+void submit_kattis()
 {
 	char *ans = last_modified_kattis();
 	if (ans != NULL) {
@@ -70,6 +76,22 @@ void button_pressed(int b)
 		printf("Retcode: %d\n", retcode);
 
 		free(cmd);
+	}
+}
+
+void start_terminal()
+{
+	assert(system("su ludop -c \"gnome-terminal &\"") == 0);
+}
+
+void button_pressed(int b)
+{
+	if (11 <= b && b <= 15) {
+		compile_kactl();
+	} else if (b == 8) {
+		start_terminal();
+	} else {
+		submit_kattis();
 	}
 }
 
