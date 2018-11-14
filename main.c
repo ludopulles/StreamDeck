@@ -62,7 +62,6 @@ void submit_kattis()
 	char *ans = last_modified_kattis();
 	if (ans != NULL) {
 		int anslen = strlen(ans);
-		// printf("The winner is: %s (%d)\n", ans, anslen);
 		char *cmd = (char*) malloc(anslen + 22);
 		strcpy(cmd, "su ludop -c \"hattis ");
 		strcpy(cmd + 20, ans);
@@ -72,7 +71,6 @@ void submit_kattis()
 		printf("Command: %s\n", cmd);
 
 		int retcode = system(cmd);
-		// int retcode = 15;
 		printf("Retcode: %d\n", retcode);
 
 		free(cmd);
