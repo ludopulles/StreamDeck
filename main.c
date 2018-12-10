@@ -85,9 +85,9 @@ void start_terminal()
 void button_pressed(int b)
 {
 	if (11 <= b && b <= 15) {
-		compile_kactl();
+		// compile_kactl();
 	} else if (b == 8) {
-		start_terminal();
+		// start_terminal();
 	} else {
 		submit_kattis();
 	}
@@ -142,6 +142,9 @@ int main()
 	int err = libusb_open(found, &handle);
 	if (err) {
 		printf("Error code while opening (%d): %s\n", err, libusb_strerror(err));
+		if (err == -3) {
+			printf("Consider running this with sudo\n");
+		}
 		return 1;
 	}
 /*
