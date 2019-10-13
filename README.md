@@ -8,3 +8,7 @@ These are installable by the available package manager on Linux. Windows is not 
 
 # Compiling
 One can compile the program with the gcc compiler whilst including the libusb-1.0 library like so:
+
+```bash
+gcc main.c -lusb-1.0
+```
